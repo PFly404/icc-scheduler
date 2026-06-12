@@ -183,27 +183,46 @@ function renderSchedule(data) {
   document.querySelectorAll('.task-block').forEach(el => el.remove());
   const CELL_HEIGHT = 52;
 
+  // Group entries by date+time to handle overlaps
+  const groups = {};
   data.forEach(entry => {
+    const key = `${entry.date}|${entry.time}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(entry);
+  });
+
+  Object.entries(groups).forEach(([key, entries]) => {
+    const [date, time] = key.split('|');
     const cell = document.querySelector(
-      `.cell[data-date="${entry.date}"][data-hour="${entry.time}"]`
+      `.cell[data-date="${date}"][data-hour="${parseInt(time)}"]`
     );
     if (!cell) return;
 
-    const block = document.createElement('div');
-    const typeClass = entry.type === 'prepare' ? 'type-prep'
-                    : entry.type === 'record'  ? 'type-record'
-                    : 'type-done';
-    block.className = `task-block ${typeClass}`;
-    const duration = entry.duration || 1;
-    const startHour = entry.time;
-    const endHour = startHour + (entry.durationMin ? entry.durationMin / 60 : duration);
-    const endH = Math.floor(endHour);
-    const endM = Math.round((endHour - endH) * 60);
-    const timeLabel = `${startHour}:${String(0).padStart(2,'0')} - ${endH}:${String(endM).padStart(2,'0')}`;
-    block.innerHTML = `<div class="task-name">${escHtml(entry.student)} ${timeLabel}</div>`;
-    block.style.top = '2px';
-    block.style.height = (duration * CELL_HEIGHT - 4) + 'px';
-    cell.appendChild(block);
+    const count = entries.length;
+    const gap = 2;
+
+    entries.forEach((entry, idx) => {
+      const block = document.createElement('div');
+      const typeClass = entry.type === 'prepare' ? 'type-prep'
+                      : entry.type === 'record'  ? 'type-record'
+                      : 'type-done';
+      block.className = `task-block ${typeClass}`;
+      const duration = entry.duration || 1;
+      const startHour = entry.time;
+      const endHour = startHour + (entry.durationMin ? entry.durationMin / 60 : duration);
+      const endH = Math.floor(endHour);
+      const endM = Math.round((endHour - endH) * 60);
+      const timeLabel = `${startHour}:${String(0).padStart(2,'0')} - ${endH}:${String(endM).padStart(2,'0')}`;
+      block.innerHTML = `<div class="task-name">${escHtml(entry.student)}</div><div class="task-project">${escHtml(entry.project)} ${timeLabel}</div>`;
+      block.style.top = '2px';
+      block.style.height = (duration * CELL_HEIGHT - 4) + 'px';
+      // Distribute horizontally when overlapping
+      const slotWidth = (100 - gap * (count + 1)) / count;
+      block.style.left = (gap + idx * (slotWidth + gap)) + '%';
+      block.style.width = slotWidth + '%';
+      block.style.right = 'auto';
+      cell.appendChild(block);
+    });
   });
 }
 
