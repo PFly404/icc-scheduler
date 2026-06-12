@@ -42,26 +42,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .task-block.type-prep{background:var(--yellow)}
 .task-block.type-record{background:var(--blue);color:#fff}
 .task-block.type-done{background:var(--green);color:#fff}
-/* Todo Widget */
-.todo-widget{position:fixed;bottom:20px;right:20px;width:280px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);z-index:200;display:flex;flex-direction:column;transition:height .25s}
-.todo-widget.dragging{opacity:.9;box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.todo-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:move;user-select:none;border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;background:#fafafa;font-weight:700;font-size:.9rem}
-.todo-header .toggle-btn{cursor:pointer;font-size:1.1rem;padding:0 4px}
-.todo-body{max-height:300px;overflow-y:auto;padding:6px 0}
-.todo-body.collapsed{display:none}
-.todo-item{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:.82rem}
-.todo-item input[type=checkbox]{accent-color:var(--green);width:16px;height:16px;cursor:pointer}
-.todo-item.done span.todo-text{text-decoration:line-through;color:#aaa}
-.todo-item .delete-todo{margin-left:auto;cursor:pointer;color:#ccc;font-size:.8rem;padding:2px}
-.todo-item .delete-todo:hover{color:#e53935}
-.todo-add{display:flex;border-top:1px solid var(--border);padding:8px 10px;gap:6px}
-.todo-add input{flex:1;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.8rem;outline:none}
-.todo-add input:focus{border-color:var(--blue)}
-.todo-add button{border:none;background:var(--blue);color:#fff;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:.8rem}
 /* Responsive */
 @media(max-width:768px){
   .schedule-grid{min-width:600px}
-  .todo-widget{width:240px;right:10px;bottom:10px}
   .header h1{font-size:1rem}
   .stats{font-size:.75rem;gap:8px;flex-wrap:wrap}
   .week-nav .week-label{min-width:90px;font-size:.8rem}
@@ -88,19 +71,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 <div class="main">
   <div class="schedule-wrapper" id="scheduleWrapper">
     <div class="schedule-grid" id="scheduleGrid"></div>
-  </div>
-</div>
-
-<!-- Todo Widget -->
-<div class="todo-widget" id="todoWidget">
-  <div class="todo-header" id="todoHeader">
-    <span>📝 待办事项</span>
-    <span class="toggle-btn" id="todoToggle">▼</span>
-  </div>
-  <div class="todo-body" id="todoBody"></div>
-  <div class="todo-add">
-    <input type="text" id="todoInput" placeholder="新增待办..." maxlength="50">
-    <button onclick="addTodo()">添加</button>
   </div>
 </div>
 
@@ -133,7 +103,7 @@ const DAY_MS = 86400000;
 
 function getThursday(d) {
   d = new Date(d);
-  const day = d.getDay(); // 0=Sun ... 4=Thu
+  const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 4);
   return new Date(d.setDate(diff));
 }
@@ -147,34 +117,7 @@ function formatDateStr(date) {
 
 let currentWeekThursday = getThursday(new Date());
 
-// ============ PERSISTENCE (todos only) ============
-let todos = [];
-let todoIdCounter = 1;
-
-function saveTodos() {
-  localStorage.setItem('icc-todos', JSON.stringify({ todos, todoIdCounter }));
-}
-function loadTodos() {
-  const raw = localStorage.getItem('icc-todos');
-  if (!raw) return false;
-  try {
-    const data = JSON.parse(raw);
-    todos = data.todos || [];
-    todoIdCounter = data.todoIdCounter || 1;
-    return true;
-  } catch (e) { return false; }
-}
-
-function getDefaultTodos() {
-  return [
-    { id: todoIdCounter++, text: '展板确认', done: false },
-    { id: todoIdCounter++, text: '视频稿确认', done: false },
-    { id: todoIdCounter++, text: '签章素材确认', done: false },
-    { id: todoIdCounter++, text: '提交最终资料(截止6/15)', done: false },
-  ];
-}
-
-// ============ RENDER GRID ============
+// ============ HELPERS ============
 function getTodayDayIndex() {
   const today = new Date();
   const thu = getThursday(today);
@@ -182,18 +125,23 @@ function getTodayDayIndex() {
   return diff >= 0 && diff <= 3 ? diff : -1;
 }
 
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ============ RENDER GRID ============
 function renderGrid() {
   const grid = document.getElementById('scheduleGrid');
   grid.innerHTML = '';
   const todayIdx = getTodayDayIndex();
 
-  // Corner cell
   const corner = document.createElement('div');
   corner.className = 'grid-header';
   corner.textContent = '时段';
   grid.appendChild(corner);
 
-  // Day headers
   DAYS.forEach((d, i) => {
     const hdr = document.createElement('div');
     hdr.className = 'grid-header' + (i === todayIdx ? ' today-col' : '');
@@ -203,7 +151,6 @@ function renderGrid() {
     grid.appendChild(hdr);
   });
 
-  // Time rows
   HOURS.forEach(hour => {
     const label = document.createElement('div');
     label.className = 'time-label';
@@ -238,7 +185,7 @@ function renderSchedule(data) {
     const cell = document.querySelector(
       `.cell[data-date="${entry.date}"][data-hour="${entry.time}"]`
     );
-    if (!cell) return; // not in current week view
+    if (!cell) return;
 
     const block = document.createElement('div');
     const typeClass = entry.type === 'prepare' ? 'type-prep'
@@ -287,123 +234,8 @@ function updateStats() {
   document.getElementById('statToday').textContent = `今日安排: ${todayCount}`;
 }
 
-// ============ TODO ============
-function renderTodos() {
-  const body = document.getElementById('todoBody');
-  body.innerHTML = '';
-  todos.forEach(t => {
-    const el = document.createElement('div');
-    el.className = 'todo-item' + (t.done ? ' done' : '');
-    el.innerHTML = `<input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${t.id})">
-      <span class="todo-text">${escHtml(t.text)}</span>
-      <span class="delete-todo" onclick="deleteTodo(${t.id})">✕</span>`;
-    body.appendChild(el);
-  });
-}
-
-function addTodo() {
-  const input = document.getElementById('todoInput');
-  const text = input.value.trim();
-  if (!text) return;
-  todos.push({ id: todoIdCounter++, text, done: false });
-  input.value = '';
-  saveTodos();
-  renderTodos();
-}
-
-function toggleTodo(id) {
-  const t = todos.find(x => x.id === id);
-  if (t) t.done = !t.done;
-  saveTodos();
-  renderTodos();
-}
-
-function deleteTodo(id) {
-  todos = todos.filter(x => x.id !== id);
-  saveTodos();
-  renderTodos();
-}
-
-// Todo widget drag (move position)
-function initTodoDrag() {
-  const widget = document.getElementById('todoWidget');
-  const header = document.getElementById('todoHeader');
-  let isDragging = false, startX, startY, startLeft, startTop;
-
-  header.addEventListener('mousedown', (e) => {
-    if (e.target.id === 'todoToggle') return;
-    isDragging = true;
-    widget.classList.add('dragging');
-    const rect = widget.getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    startLeft = rect.left; startTop = rect.top;
-    widget.style.right = 'auto'; widget.style.bottom = 'auto';
-    widget.style.left = startLeft + 'px'; widget.style.top = startTop + 'px';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    widget.style.left = (startLeft + e.clientX - startX) + 'px';
-    widget.style.top = (startTop + e.clientY - startY) + 'px';
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (isDragging) { isDragging = false; widget.classList.remove('dragging'); }
-  });
-
-  // Touch support
-  header.addEventListener('touchstart', (e) => {
-    if (e.target.id === 'todoToggle') return;
-    isDragging = true;
-    const touch = e.touches[0];
-    const rect = widget.getBoundingClientRect();
-    startX = touch.clientX; startY = touch.clientY;
-    startLeft = rect.left; startTop = rect.top;
-    widget.style.right = 'auto'; widget.style.bottom = 'auto';
-    widget.style.left = startLeft + 'px'; widget.style.top = startTop + 'px';
-  }, { passive: true });
-
-  document.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    const touch = e.touches[0];
-    widget.style.left = (startLeft + touch.clientX - startX) + 'px';
-    widget.style.top = (startTop + touch.clientY - startY) + 'px';
-  }, { passive: true });
-
-  document.addEventListener('touchend', () => { isDragging = false; });
-
-  // Toggle collapse
-  document.getElementById('todoToggle').addEventListener('click', () => {
-    const body = document.getElementById('todoBody');
-    const add = document.querySelector('.todo-add');
-    const isCollapsed = body.classList.toggle('collapsed');
-    add.style.display = isCollapsed ? 'none' : 'flex';
-    document.getElementById('todoToggle').textContent = isCollapsed ? '▶' : '▼';
-  });
-
-  // Enter key
-  document.getElementById('todoInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addTodo();
-  });
-}
-
-// ============ HELPERS ============
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
 // ============ INIT ============
-(function init() {
-  if (!loadTodos()) {
-    todos = getDefaultTodos();
-  }
-  renderGrid();
-  renderTodos();
-  initTodoDrag();
-})();
+renderGrid();
 </script>
 </body>
 </html>
