@@ -39,6 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 .task-block{position:absolute;left:3px;right:3px;border-radius:5px;padding:4px 6px;font-size:.72rem;color:#333;z-index:5;overflow:hidden;line-height:1.3;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .task-block .task-name{font-weight:700;font-size:.75rem}
 .task-block .task-project{font-size:.65rem;opacity:.85}
+.task-block .task-todo{font-size:.65rem;opacity:.9;margin-top:1px;font-weight:600}
 .task-block.type-prep{background:var(--yellow)}
 .task-block.type-record{background:var(--blue);color:#fff}
 .task-block.type-done{background:var(--green);color:#fff}
@@ -89,12 +90,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hira
 // ================================================================
 const scheduleData = [
   { date: '2026-06-12', time: 17, duration: 2, student: '林辰', project: '防溢饮水机', type: 'record' },
-  { date: '2026-06-12', time: 17, duration: 2, student: '王雨腾', project: '课堂转录助手', type: 'record' },
+  { date: '2026-06-12', time: 17, duration: 2, student: '王雨腾', project: '课堂转录助手', type: 'record', todo: '项目装配' },
   { date: '2026-06-12', time: 17, duration: 2, student: '许皓然', project: '预警头盔', type: 'record' },
   { date: '2026-06-12', time: 17, duration: 2, student: '宋芝玥', project: '鹦鹉好声音', type: 'record' },
-  { date: '2026-06-13', time: 15, duration: 1.5, student: '孙艺绮', project: 'ICC项目', type: 'record' },
+  { date: '2026-06-13', time: 15, duration: 1.5, student: '孙艺绮', project: 'ICC项目', type: 'record', todo: '新盒子打印' },
   { date: '2026-06-13', time: 15, duration: 1.5, student: '王潇然', project: '配速车', type: 'record' },
-  { date: '2026-06-14', time: 17, duration: 1.5, student: '高雨泽', project: '宠物减肥机器人', type: 'record' },
+  { date: '2026-06-14', time: 17, duration: 1.5, student: '高雨泽', project: '宠物减肥机器人', type: 'record', todo: '项目装配' },
+  { date: '2026-06-14', time: 17, duration: 1.5, student: '李象博', project: '楼梯助行', type: 'record', todo: '程序编写' },
 ];
 // ================================================================
 
@@ -213,7 +215,8 @@ function renderSchedule(data) {
       const endH = Math.floor(endHour);
       const endM = Math.round((endHour - endH) * 60);
       const timeLabel = `${startHour}:${String(0).padStart(2,'0')} - ${endH}:${String(endM).padStart(2,'0')}`;
-      block.innerHTML = `<div class="task-name">${escHtml(entry.student)}</div><div class="task-project">${escHtml(entry.project)} ${timeLabel}</div>`;
+      const todoHtml = entry.todo ? `<div class="task-todo">📋 ${escHtml(entry.todo)}</div>` : '';
+      block.innerHTML = `<div class="task-name">${escHtml(entry.student)}</div><div class="task-project">${escHtml(entry.project)} ${timeLabel}</div>${todoHtml}`;
       block.style.top = '2px';
       block.style.height = (duration * CELL_HEIGHT - 4) + 'px';
       // Distribute horizontally when overlapping
